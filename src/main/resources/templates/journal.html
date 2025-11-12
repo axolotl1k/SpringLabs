@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Електронний журнал</title>
+</head>
+<body>
+<h1>Електронний журнал</h1>
+
+<p>
+  <a th:href="@{/teacher/lesson/new}" style="font-weight: bold; color: blue;">
+    [Дія викладача] Додати нове заняття
+  </a>
+</p>
+
+<h2>Список занять</h2>
+<ul>
+  <li th:each="lesson : ${lessons}">
+    <a th:href="@{/lesson/{id}(id=${lesson.id})}"
+       th:text="${lesson.date} + ' - ' + ${lesson.subject} + ' (' + ${lesson.topic} + ')'">
+    </a>
+    <a th:href="@{/teacher/lesson/{id}/edit(id=${lesson.id})}" style="margin-left: 10px;">
+      [Редагувати]
+    </a>
+    <form th:action="@{/teacher/lesson/{id}/delete(id=${lesson.id})}" method="post" style="display: inline-block; margin-left: 5px;">
+      <button type="submit" style="color: red; background: none; border: none; cursor: pointer; padding: 0;">
+        [Видалити]
+      </button>
+    </form>
+  </li>
+</ul>
+</body>
+</html>

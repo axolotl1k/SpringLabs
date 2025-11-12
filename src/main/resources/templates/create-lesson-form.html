@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Нове заняття</title>
+</head>
+<body>
+<a href="/">&larr; Назад до списку</a>
+
+<h1>Створити нове заняття</h1>
+
+<form th:action="@{/teacher/lesson/create}" th:object="${lesson}" method="post">
+    <div>
+        <label for="subject">Предмет:</label><br>
+        <input type="text" id="subject" th:field="*{subject}" placeholder="Наприклад, Математика"/>
+    </div>
+    <div>
+        <label for="topic">Тема заняття:</label><br>
+        <input type="text" id="topic" th:field="*{topic}" placeholder="Наприклад, Інтеграли"/>
+    </div>
+    <br>
+    <button type="submit">Створити</button>
+</form>
+
+</body>
+</html>
