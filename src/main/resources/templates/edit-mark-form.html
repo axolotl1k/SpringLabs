@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Редагувати відмітку</title>
+</head>
+<body>
+<a th:href="@{/lesson/{id}(id=${lessonId})}">&larr; Назад до заняття</a>
+
+<h1>Редагувати відмітку</h1>
+
+<form th:action="@{/teacher/lesson/{lessonId}/mark/{markId}/update(lessonId=${lessonId}, markId=${mark.id})}"
+      th:object="${mark}"
+      method="post">
+
+    <input type="hidden" th:field="*{id}" />
+
+    <div>
+        <label for="studentName">Прізвище студента:</label><br>
+        <input type="text" id="studentName" th:field="*{studentName}" />
+    </div>
+
+    <div>
+        <input type="checkbox" id="present-checkbox" th:field="*{present}" onchange="toggleGradeInput()" />
+        <label for="present-checkbox">Присутній</label>
+    </div>
+
+    <div>
+        <label for="grade-input">Оцінка:</label><br>
+        <input type="number" id="grade-input" th:field="*{grade}" />
+    </div>
+
+    <button type="submit">Оновити</button>
+</form>
+
+<script>
+    function toggleGradeInput() {
+        var checkbox = document.getElementById('present-checkbox');
+        var gradeInput = document.getElementById('grade-input');
+
+        if (checkbox.checked) {
+            gradeInput.disabled = false;
+        } else {
+            gradeInput.disabled = true;
+            gradeInput.value = '';
+        }
+    }
+
+    toggleGradeInput();
+</script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Редагувати заняття</title>
+</head>
+<body>
+<a href="/">&larr; Назад до списку</a>
+
+<h1>Редагувати заняття</h1>
+
+<form th:action="@{/teacher/lesson/{id}/update(id=${lesson.id})}" th:object="${lesson}" method="post">
+    <div>
+        <label for="subject">Предмет:</label><br>
+        <input type="text" id="subject" th:field="*{subject}" />
+    </div>
+    <div>
+        <label for="topic">Тема заняття:</label><br>
+        <input type="text" id="topic" th:field="*{topic}" />
+    </div>
+    <br>
+    <button type="submit">Оновити</button>
+</form>
+
+</body>
+</html>
