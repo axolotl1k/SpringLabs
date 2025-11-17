@@ -35,9 +35,8 @@ public class Lesson {
     // а не в сервісі.
 
     public void addMark(Mark mark) {
-        if (mark.getId() == null) {
-            mark.setId(this.markIdGenerator.getNextId());
-        }
+        mark.setId(this.markIdGenerator.getNextId());
+
         if (!mark.isPresent()) {
             mark.setGrade(null);
         }
