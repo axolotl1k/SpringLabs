@@ -72,6 +72,7 @@ public class Lesson {
             originalMark.setStudentName(updatedMark.getStudentName());
             originalMark.setPresent(updatedMark.isPresent());
             originalMark.setGrade(updatedMark.getGrade());
+            originalMark.setTimestamp(updatedMark.getTimestamp());
         }
     }
 }

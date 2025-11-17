@@ -11,7 +11,7 @@
     <artifactId>gradebook</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>gradebook</name>
-    <description>Lab 2 - Gradebook</description>
+    <description>Lab 2-3 - Gradebook</description>
     <properties>
         <java.version>17</java.version>
     </properties>
