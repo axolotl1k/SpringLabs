@@ -10,6 +10,8 @@ import org.springframework.beans.factory.ObjectFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -78,6 +80,7 @@ public class JournalServiceImpl implements JournalService {
             Lesson lesson = lessonOpt.get();
             lesson.setSubject(newSubject);
             lesson.setTopic(newTopic);
+            lesson.setDate(LocalDate.now());
             repository.save(lesson);
 
             if (notificationService != null) {
@@ -138,6 +141,7 @@ public class JournalServiceImpl implements JournalService {
         if (lessonOpt.isPresent()) {
             Lesson lesson = lessonOpt.get();
             updatedMark.setId(markId);
+            updatedMark.setTimestamp(LocalDateTime.now());
             lesson.updateMark(updatedMark);
             repository.save(lesson);
 

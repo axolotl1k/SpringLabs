@@ -1,0 +1,477 @@
+:root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --danger: #dc2626;
+    --muted: #6b7280;
+    --bg: #f3f4f6;
+    --card-bg: #ffffff;
+    --radius: 14px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background-color: var(--bg);
+    color: #111827;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 32px auto;
+    padding: 0 16px;
+}
+
+.container.narrow {
+    max-width: 900px;
+}
+
+.container.small {
+    max-width: 600px;
+}
+
+.card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 24px 24px 18px;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+h1 {
+    margin: 0;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+}
+
+h1.small {
+    font-size: 22px;
+}
+
+.subtitle {
+    margin: 4px 0 0;
+    font-size: 14px;
+    color: var(--muted);
+}
+
+.meta {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 16px;
+}
+
+.text-muted {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+a:hover {
+    color: #374151;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.05s ease;
+}
+
+.btn-primary {
+    background-color: var(--primary);
+    color: #ffffff;
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.3);
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+.btn-outline {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid #e5e7eb;
+}
+
+.btn-outline:hover {
+    background-color: #f9fafb;
+}
+
+.btn-danger {
+    background: #dc2626;
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 6px 14px rgba(220, 38, 38, 0.35);
+    transition: background 0.2s ease, transform 0.1s ease;
+}
+
+.btn-danger:hover {
+    background: #b91c1c;
+    transform: translateY(-1px);
+}
+
+html.dark .btn-danger {
+    background: #ef4444;
+    color: #fff;
+}
+
+html.dark .btn-danger:hover {
+    background: #dc2626;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+}
+
+thead {
+    background-color: #f9fafb;
+}
+
+th, td {
+    padding: 10px 18px;
+    font-size: 14px;
+    text-align: left;
+}
+
+th {
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: .08em;
+    color: var(--muted);
+    border-bottom: 1px solid #e5e7eb;
+}
+
+tbody tr {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+tbody tr:last-child {
+    border-bottom: none;
+}
+
+tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+.date-cell {
+    white-space: nowrap;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background-color: #eef2ff;
+    color: #4f46e5;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.actions {
+    display: flex;
+    gap: 6px;
+}
+
+form {
+    display: inline;
+}
+
+.status-present {
+    color: #16a34a;
+    font-weight: 600;
+}
+
+.status-absent {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.grade-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.grade-high {
+    background-color:#dcfce7;
+    color: #166534;
+}
+
+.grade-mid {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+}
+
+.grade-low {
+    background-color: #fee2e2;
+    color: #b91c1c;
+}
+
+.grade-none {
+    background-color: #e5e7eb;
+    color: #374151;
+}
+
+label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+input[type="text"],
+input[type="number"] {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 1px var(--primary);
+}
+
+.theme-toggle {
+    display: flex;
+    align-items: center;
+    margin-right: 8px;
+}
+
+.theme-toggle input {
+    display: none;
+}
+
+.theme-toggle label {
+    position: relative;
+    width: 48px;
+    height: 24px;
+    background: #d1d5db;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.theme-toggle label::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.3s ease;
+}
+
+.theme-toggle input:checked + label {
+    background: #4f46e5;
+}
+
+.theme-toggle input:checked + label::after {
+    transform: translateX(24px);
+}
+
+html.dark {
+    --bg: #18181b;
+    --card-bg: #27272a;
+    --muted: #a1a1aa;
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --danger: #f87171;
+}
+
+html.dark body {
+    color: #e4e4e7;
+}
+
+html.dark .card {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+}
+
+html.dark table tbody tr:hover {
+    background-color: #3f3f46;
+}
+
+html.dark thead {
+    background-color: #3f3f46;
+}
+
+html.dark th {
+    border-bottom: 1px solid #52525b;
+}
+
+html.dark td,
+html.dark th {
+    color: #e4e4e7;
+}
+
+html.dark .btn-outline {
+    color: #d4d4d8;
+    border-color: #52525b;
+}
+
+html.dark .btn-outline:hover {
+    background: #3f3f46;
+}
+
+html.dark .badge {
+    background: #3730a3;
+    color: #c7d2fe;
+}
+
+@media (max-width: 700px) {
+    thead {
+        display: none;
+    }
+
+    table, tbody, tr, td {
+        display: block;
+        width: 100%;
+    }
+
+    tr {
+        margin-bottom: 12px;
+        border-radius: 10px;
+        border: 1px solid #e5e7eb;
+        padding: 8px 10px;
+        background-color: #fff;
+    }
+
+    td {
+        border: none;
+        padding: 4px 0;
+    }
+
+    td[data-label]::before {
+        content: attr(data-label) ": ";
+        font-weight: 600;
+        color: var(--muted);
+        white-space: nowrap;
+    }
+
+    .actions {
+        margin-top: 4px;
+    }
+}
+
+.switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 14px;
+}
+
+.switch input {
+    position: absolute;
+    opacity: 0;
+}
+
+.switch-slider {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    background-color: #dc2626;
+    border-radius: 999px;
+    transition: background-color 0.25s ease;
+}
+
+.switch-slider::before {
+    content: "";
+    position: absolute;
+    left: 3px;
+    bottom: 3px;
+    width: 18px;
+    height: 18px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.25s ease;
+}
+
+.switch-label {
+    font-weight: 600;
+    color: #dc2626;
+    transition: color 0.25s ease;
+}
+
+.switch input:checked ~ .switch-slider {
+    background-color: #22c55e;
+}
+
+.switch input:checked ~ .switch-slider::before {
+    transform: translateX(18px);
+}
+
+.switch input:checked ~ .switch-label {
+    color: #22c55e;
+}
+
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: #e5e7eb;
+    color: #374151;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.back-btn:hover {
+    background: #d1d5db;
+    transform: translateX(-2px);
+}
+
+.back-btn::before {
+    content: "←";
+    font-size: 16px;
+}
+
+html.dark .back-btn {
+    background: #3f3f46;
+    color: #e4e4e7;
+}
+
+html.dark .back-btn:hover {
+    background: #52525b;
+}

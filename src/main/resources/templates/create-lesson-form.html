@@ -1,26 +1,45 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="uk">
 <head>
     <meta charset="UTF-8">
     <title>Нове заняття</title>
+    <script>
+        (function() {
+            try {
+                var savedTheme = localStorage.getItem('theme');
+                if (savedTheme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                }
+            } catch (e) {
+            }
+        })();
+    </script>
+    <link rel="stylesheet" th:href="@{/css/style.css}" />
 </head>
-<body>
-<a href="/">&larr; Назад до списку</a>
+<body class="light">
 
-<h1>Створити нове заняття</h1>
+<div class="container small">
 
-<form th:action="@{/teacher/lesson/create}" th:object="${lesson}" method="post">
-    <div>
-        <label for="subject">Предмет:</label><br>
-        <input type="text" id="subject" th:field="*{subject}" placeholder="Наприклад, Математика"/>
+    <a href="/" class="back-btn">Назад</a>
+
+    <div class="card">
+        <h1 class="small">Створити нове заняття</h1>
+
+        <form th:action="@{/teacher/lesson/create}" th:object="${lesson}" method="post">
+
+            <label for="subject">Предмет</label>
+            <input type="text" id="subject" th:field="*{subject}" required/>
+
+            <label for="topic">Тема заняття</label>
+            <input type="text" id="topic" th:field="*{topic}" />
+
+            <button class="btn btn-primary" type="submit">Створити</button>
+
+        </form>
     </div>
-    <div>
-        <label for="topic">Тема заняття:</label><br>
-        <input type="text" id="topic" th:field="*{topic}" placeholder="Наприклад, Інтеграли"/>
-    </div>
-    <br>
-    <button type="submit">Створити</button>
-</form>
 
+</div>
+
+<script th:src="@{/js/app.js}"></script>
 </body>
 </html>
