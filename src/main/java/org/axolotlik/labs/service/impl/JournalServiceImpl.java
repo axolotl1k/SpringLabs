@@ -3,255 +3,177 @@ package org.axolotlik.labs.service.impl;
 import org.axolotlik.labs.model.Lesson;
 import org.axolotlik.labs.model.LessonPage;
 import org.axolotlik.labs.model.Mark;
-import org.axolotlik.labs.repo.JournalRepository;
+import org.axolotlik.labs.repo.LessonRepository;
+import org.axolotlik.labs.repo.MarkRepository;
 import org.axolotlik.labs.service.JournalService;
-import org.axolotlik.labs.service.NotificationService;
-import org.axolotlik.labs.util.IdGenerator;
-import org.springframework.beans.factory.ObjectFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
-/**
- * Реалізація сервісу журналу:
- * - робота з уроками (Lesson)
- * - робота з відмітками (Mark)
- * - фільтрація, пагінація, PATCH для ЛР4
- */
 @Service
 public class JournalServiceImpl implements JournalService {
 
-    private final JournalRepository repository;
-    private final ObjectFactory<IdGenerator> idGeneratorFactory;
+    private final LessonRepository lessonRepo;
+    private final MarkRepository markRepo;
 
-    private NotificationService notificationService;
-
-    @Autowired
-    public JournalServiceImpl(JournalRepository repository,
-                              ObjectFactory<IdGenerator> idGeneratorFactory) {
-        this.repository = repository;
-        this.idGeneratorFactory = idGeneratorFactory;
+    public JournalServiceImpl(LessonRepository lessonRepo, MarkRepository markRepo) {
+        this.lessonRepo = lessonRepo;
+        this.markRepo = markRepo;
     }
 
-    // Демонстрація інʼєкції через сеттер
-    @Autowired
-    public void setNotificationService(NotificationService notificationService) {
-        this.notificationService = notificationService;
-    }
-
-    // ==================== УРОКИ (Lesson) ====================
+    // ===== LESSONS =====
 
     @Override
     public List<Lesson> getAllLessons() {
-        return repository.findAll();
+        var lessons = lessonRepo.findAll();
+        for (var l : lessons) {
+            l.setMarks(markRepo.findByLessonId(l.getId()));
+        }
+        return lessons;
     }
 
     @Override
     public Optional<Lesson> getLessonById(Long id) {
-        return repository.findById(id);
+        var opt = lessonRepo.findById(id);
+        opt.ifPresent(l -> l.setMarks(markRepo.findByLessonId(l.getId())));
+        return opt;
     }
 
     @Override
+    @Transactional
     public Lesson createLesson(String subject, String topic) {
-        // Для кожного нового Lesson створюємо власний генератор для Marks
-        IdGenerator markGen = idGeneratorFactory.getObject();
-        Lesson lesson = new Lesson(null, subject, topic, markGen);
-        lesson.setDate(LocalDate.now());
-
-        Lesson saved = repository.save(lesson);
-
-        if (notificationService != null) {
-            notificationService.notify("Створено новий урок з предмету: " + subject);
-        }
-        return saved;
+        Lesson l = new Lesson();
+        l.setSubject(subject);
+        l.setTopic(topic);
+        l.setDate(LocalDate.now());
+        return lessonRepo.save(l);
     }
 
     @Override
+    @Transactional
     public void updateLesson(Long lessonId, String newSubject, String newTopic) {
-        Optional<Lesson> lessonOpt = repository.findById(lessonId);
-        if (lessonOpt.isEmpty()) {
-            return;
-        }
-
-        Lesson lesson = lessonOpt.get();
-        lesson.setSubject(newSubject);
-        lesson.setTopic(newTopic);
-        repository.save(lesson);
-
-        if (notificationService != null) {
-            notificationService.notify("Оновлено урок з предмету: " + newSubject);
-        }
+        var opt = lessonRepo.findById(lessonId);
+        if (opt.isEmpty()) return;
+        Lesson l = opt.get();
+        if (newSubject != null) l.setSubject(newSubject);
+        if (newTopic != null) l.setTopic(newTopic);
+        lessonRepo.save(l);
     }
 
     @Override
+    @Transactional
     public void deleteLesson(Long lessonId) {
-        Optional<Lesson> lessonOpt = repository.findById(lessonId);
-        if (lessonOpt.isEmpty()) {
-            return;
-        }
-
-        repository.deleteById(lessonId);
-
-        if (notificationService != null) {
-            notificationService.notify("Видалено урок з id = " + lessonId);
-        }
+        lessonRepo.deleteById(lessonId);
     }
 
-    // ==================== ВІДМІТКИ (Mark) ====================
+    @Override
+    public LessonPage findLessons(String subject, LocalDate dateFrom, LocalDate dateTo, int page, int size) {
+        List<Lesson> all = lessonRepo.findAll();
+
+        var stream = all.stream();
+        if (subject != null && !subject.isBlank()) {
+            String s = subject.toLowerCase();
+            stream = stream.filter(l -> l.getSubject() != null && l.getSubject().toLowerCase().contains(s));
+        }
+        if (dateFrom != null) stream = stream.filter(l -> l.getDate() != null && !l.getDate().isBefore(dateFrom));
+        if (dateTo != null)   stream = stream.filter(l -> l.getDate() != null && !l.getDate().isAfter(dateTo));
+
+        List<Lesson> filtered = stream.toList();
+        long total = filtered.size();
+        if (size <= 0) size = 10;
+        if (page < 0) page = 0;
+
+        int from = Math.min(page * size, filtered.size());
+        int to = Math.min(from + size, filtered.size());
+        List<Lesson> content = filtered.subList(from, to);
+        int pages = (int) Math.ceil((double) total / size);
+
+        return new LessonPage(content, page, size, total, pages);
+    }
 
     @Override
-    public void addMark(Long lessonId, Mark mark) {
-        Optional<Lesson> lessonOpt = repository.findById(lessonId);
-        if (lessonOpt.isEmpty()) {
-            return;
-        }
+    @Transactional
+    public Optional<Lesson> patchLesson(Long id, Map<String, Object> updates) {
+        var opt = lessonRepo.findById(id);
+        if (opt.isEmpty()) return Optional.empty();
+        Lesson l = opt.get();
 
-        Lesson lesson = lessonOpt.get();
-        // Lesson сам виставляє id/timestamp/grade через addMark(...)
-        lesson.addMark(mark);
-        repository.save(lesson);
+        if (updates.containsKey("subject") && updates.get("subject") instanceof String s) l.setSubject(s);
+        if (updates.containsKey("topic") && updates.get("topic") instanceof String s)   l.setTopic(s);
+        if (updates.containsKey("date") && updates.get("date") instanceof String s)    l.setDate(LocalDate.parse(s));
 
-        if (notificationService != null) {
-            notificationService.notify("Додано відмітку для " + mark.getStudentName());
-        }
+        lessonRepo.save(l);
+        return Optional.of(l);
+    }
+
+    // ===== MARKS =====
+
+    @Override
+    public List<Mark> getMarksForLesson(Long lessonId) {
+        return markRepo.findByLessonId(lessonId);
     }
 
     @Override
     public Mark findMarkById(Long lessonId, Long markId) {
-        Optional<Lesson> lessonOpt = repository.findById(lessonId);
-        if (lessonOpt.isEmpty()) {
-            return null;
-        }
-
-        Lesson lesson = lessonOpt.get();
-        return lesson.findMarkById(markId).orElse(null);
+        return markRepo.findById(markId)
+                .filter(m -> Objects.equals(m.getLessonId(), lessonId))
+                .orElse(null);
     }
 
     @Override
+    @Transactional
+    public void addMark(Long lessonId, Mark mark) {
+        if (mark.getTimestamp() == null) mark.setTimestamp(LocalDateTime.now());
+        if (mark.isPresent() && mark.getGrade() == null) mark.setGrade(0);
+        mark.setLessonId(lessonId);
+        Mark saved = markRepo.save(mark);
+        mark.setId(saved.getId());
+    }
+
+    @Override
+    @Transactional
     public void updateMark(Long lessonId, Long markId, Mark updatedMark) {
-        Optional<Lesson> lessonOpt = repository.findById(lessonId);
-        if (lessonOpt.isEmpty()) {
-            return;
-        }
-
-        Lesson lesson = lessonOpt.get();
-
         updatedMark.setId(markId);
+        updatedMark.setLessonId(lessonId);
         updatedMark.setTimestamp(LocalDateTime.now());
-
-        lesson.updateMark(updatedMark);
-        repository.save(lesson);
-
-        if (notificationService != null) {
-            notificationService.notify("Оновлено відмітку для " + updatedMark.getStudentName());
-        }
+        markRepo.save(updatedMark);
     }
 
     @Override
+    @Transactional
     public void deleteMark(Long lessonId, Long markId) {
-        Optional<Lesson> lessonOpt = repository.findById(lessonId);
-        if (lessonOpt.isEmpty()) {
-            return;
-        }
-
-        Lesson lesson = lessonOpt.get();
-
-        String studentName = lesson.findMarkById(markId)
-                .map(Mark::getStudentName)
-                .orElse("невідомого студента");
-
-        lesson.deleteMarkById(markId);
-        repository.save(lesson);
-
-        if (notificationService != null) {
-            notificationService.notify("Видалено відмітку (id = "
-                    + markId + ") для " + studentName);
-        }
+        markRepo.deleteById(markId);
     }
 
-    // ==================== ФІЛЬТРАЦІЯ + ПАГІНАЦІЯ ====================
-
     @Override
-    public LessonPage findLessons(String subject,
-                                  LocalDate dateFrom,
-                                  LocalDate dateTo,
-                                  int page,
-                                  int size) {
-
-        List<Lesson> all = repository.findAll();
-        var stream = all.stream();
-
-        if (subject != null && !subject.isBlank()) {
-            String s = subject.toLowerCase();
-            stream = stream.filter(l ->
-                    l.getSubject() != null &&
-                            l.getSubject().toLowerCase().contains(s));
-        }
-
-        if (dateFrom != null) {
-            stream = stream.filter(l ->
-                    l.getDate() != null && !l.getDate().isBefore(dateFrom));
-        }
-
-        if (dateTo != null) {
-            stream = stream.filter(l ->
-                    l.getDate() != null && !l.getDate().isAfter(dateTo));
-        }
-
-        List<Lesson> filtered = stream.toList();
-        long totalElements = filtered.size();
-
-        if (size <= 0) size = 10;
-        if (page < 0) page = 0;
-
-        int fromIndex = Math.min(page * size, filtered.size());
-        int toIndex = Math.min(fromIndex + size, filtered.size());
-        List<Lesson> content = filtered.subList(fromIndex, toIndex);
-
-        int totalPages = (int) Math.ceil((double) totalElements / size);
-
-        return new LessonPage(content, page, size, totalElements, totalPages);
+    public List<Mark> latestMarks(int limit) {
+        int safe = Math.max(1, Math.min(limit, 100));
+        return markRepo.findAllByOrderByTimestampDesc(PageRequest.of(0, safe)).getContent();
     }
 
-    // ==================== PATCH (часткове оновлення) ====================
+    // ===== НОВЕ: використання @Query / @NamedQuery / derived =====
 
     @Override
-    public Optional<Lesson> patchLesson(Long id, Map<String, Object> updates) {
-        Optional<Lesson> opt = repository.findById(id);
-        if (opt.isEmpty()) {
-            return Optional.empty();
-        }
+    public List<Lesson> searchLessonsByQuery(String subject, LocalDate from, LocalDate to) {
+        return lessonRepo.search(subject, from, to);
+    }
 
-        Lesson lesson = opt.get();
+    @Override
+    public List<Lesson> searchLessonsByTopicNamed(String pattern) {
+        return lessonRepo.findByTopicPattern(pattern);
+    }
 
-        if (updates.containsKey("subject")) {
-            Object value = updates.get("subject");
-            if (value instanceof String s) {
-                lesson.setSubject(s);
-            }
-        }
+    @Override
+    public List<Mark> findPresentMarks(Long lessonId) {
+        return markRepo.findPresentByLesson(lessonId);
+    }
 
-        if (updates.containsKey("topic")) {
-            Object value = updates.get("topic");
-            if (value instanceof String s) {
-                lesson.setTopic(s);
-            }
-        }
-
-        if (updates.containsKey("date")) {
-            Object value = updates.get("date");
-            if (value instanceof String s) {
-                LocalDate parsed = LocalDate.parse(s);
-                lesson.setDate(parsed);
-            }
-        }
-
-        Lesson saved = repository.save(lesson);
-        return Optional.of(saved);
+    @Override
+    public List<Mark> findMarksInRangeNamed(Long lessonId, LocalDateTime from, LocalDateTime to) {
+        return markRepo.findInRangeForLesson(lessonId, from, to);
     }
 }

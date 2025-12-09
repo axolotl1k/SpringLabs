@@ -1,10 +1,15 @@
 package org.axolotlik.labs.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import org.axolotlik.labs.dto.lesson.CreateLessonRequest;
+import org.axolotlik.labs.dto.lesson.LessonDto;
+import org.axolotlik.labs.dto.lesson.LessonPageDto;
+import org.axolotlik.labs.dto.lesson.UpdateLessonRequest;
 import org.axolotlik.labs.model.Lesson;
 import org.axolotlik.labs.model.LessonPage;
 import org.axolotlik.labs.service.JournalService;
@@ -14,194 +19,172 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/**
- * REST-контролер для роботи з уроками (журналом).
- * Реалізує:
- *  - CRUD
- *  - фільтрацію та пагінацію
- *  - часткове оновлення (PATCH)
- *  - коректні коди стану HTTP
- */
 @RestController
 @RequestMapping("/api/lessons")
 public class LessonsRestController {
 
-    private final JournalService journalService;
+    private final JournalService service;
 
-    public LessonsRestController(JournalService journalService) {
-        this.journalService = journalService;
+    public LessonsRestController(JournalService service) {
+        this.service = service;
     }
 
-    // ---------- READ: список з фільтрацією та пагінацією ----------
-
+    // ===== LIST + FILTER + PAGE =====
     @Operation(
-            summary = "Отримати сторінку занять",
-            description = "Повертає список занять з можливістю фільтрації за предметом "
-                    + "та діапазоном дат, а також пагінацією результатів."
+            summary = "Отримати список занять (з фільтрами та пагінацією)",
+            description = "Фільтри: subject, dateFrom/dateTo; параметри сторінки: page, size."
     )
-    @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Успішне отримання списку занять",
-                    content = @Content(schema = @Schema(implementation = LessonPage.class))
-            )
-    })
+    @ApiResponse(
+            responseCode = "200",
+            description = "Сторінка занять",
+            content = @Content(schema = @Schema(implementation = LessonPageDto.class))
+    )
     @GetMapping
-    public ResponseEntity<LessonPage> getLessons(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+    public ResponseEntity<LessonPageDto> list(
             @RequestParam(required = false) String subject,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
     ) {
-        LessonPage result = journalService.findLessons(subject, dateFrom, dateTo, page, size);
-        return ResponseEntity.ok(result);
+        LessonPage p = service.findLessons(subject, dateFrom, dateTo, page, size);
+        return ResponseEntity.ok(toDto(p));
     }
 
-    // ---------- READ: одне заняття ----------
-
-    @Operation(
-            summary = "Отримати заняття за ідентифікатором",
-            description = "Повертає одне заняття за його унікальним ідентифікатором."
-    )
+    // ===== GET ONE =====
+    @Operation(summary = "Отримати заняття за ID")
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Заняття знайдено",
-                    content = @Content(schema = @Schema(implementation = Lesson.class))
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Заняття не знайдено"
-            )
+            @ApiResponse(responseCode = "200", description = "Знайдено",
+                    content = @Content(schema = @Schema(implementation = LessonDto.class))),
+            @ApiResponse(responseCode = "404", description = "Не знайдено",
+                    content = @Content(schema = @Schema(hidden = true)))
     })
     @GetMapping("/{id}")
-    public ResponseEntity<Lesson> getLesson(@PathVariable Long id) {
-        Optional<Lesson> lessonOpt = journalService.getLessonById(id);
+    public ResponseEntity<LessonDto> one(@PathVariable Long id) {
+        Optional<Lesson> lessonOpt = service.getLessonById(id);
         return lessonOpt
-                .map(ResponseEntity::ok)
+                .map(l -> ResponseEntity.ok(toDto(l)))
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }
 
-    // ---------- CREATE ----------
-
-    @Operation(
-            summary = "Створити нове заняття",
-            description = "Створює новий ресурс Lesson на основі переданих даних (предмет та тема)."
-    )
+    // ===== CREATE =====
+    @Operation(summary = "Створити нове заняття")
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "201",
-                    description = "Заняття успішно створене",
-                    content = @Content(schema = @Schema(implementation = Lesson.class))
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Невірні вхідні дані"
-            )
+            @ApiResponse(responseCode = "201", description = "Створено",
+                    content = @Content(schema = @Schema(implementation = LessonDto.class))),
+            @ApiResponse(responseCode = "400", description = "Некоректні дані",
+                    content = @Content(schema = @Schema(hidden = true)))
     })
     @PostMapping
-    public ResponseEntity<Lesson> createLesson(@RequestBody Lesson request) {
-        if (request.getSubject() == null || request.getSubject().isBlank()
-                || request.getTopic() == null || request.getTopic().isBlank()) {
+    public ResponseEntity<LessonDto> create(@RequestBody CreateLessonRequest req) {
+        if (req == null || req.getSubject() == null || req.getSubject().isBlank()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
-
-        Lesson created = journalService.createLesson(request.getSubject(), request.getTopic());
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        Lesson created = service.createLesson(req.getSubject(), req.getTopic());
+        return ResponseEntity.status(HttpStatus.CREATED).body(toDto(created));
     }
 
-    // ---------- UPDATE (PUT) ----------
-
-    @Operation(
-            summary = "Повне оновлення заняття",
-            description = "Оновлює базові поля заняття (предмет, тема). "
-                    + "Якщо заняття не знайдено — повертається 404."
-    )
+    // ===== UPDATE (PUT) =====
+    @Operation(summary = "Оновити заняття (повне оновлення)")
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Заняття успішно оновлене",
-                    content = @Content(schema = @Schema(implementation = Lesson.class))
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Заняття не знайдено"
-            )
+            @ApiResponse(responseCode = "200", description = "Оновлено",
+                    content = @Content(schema = @Schema(implementation = LessonDto.class))),
+            @ApiResponse(responseCode = "404", description = "Не знайдено",
+                    content = @Content(schema = @Schema(hidden = true)))
     })
     @PutMapping("/{id}")
-    public ResponseEntity<Lesson> updateLesson(
-            @PathVariable Long id,
-            @RequestBody Lesson request
-    ) {
-        Optional<Lesson> existingOpt = journalService.getLessonById(id);
-        if (existingOpt.isEmpty()) {
+    public ResponseEntity<LessonDto> update(@PathVariable Long id, @RequestBody UpdateLessonRequest req) {
+        if (service.getLessonById(id).isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
-
-        journalService.updateLesson(id, request.getSubject(), request.getTopic());
-        Lesson updated = journalService.getLessonById(id).orElse(existingOpt.get());
-        return ResponseEntity.ok(updated);
-    }
-
-    // ---------- PARTIAL UPDATE (PATCH) ----------
-
-    @Operation(
-            summary = "Часткове оновлення заняття (PATCH)",
-            description = "Оновлює лише ті поля заняття, які передані у тілі запиту. "
-                    + "Підхід подібний до JSON Merge Patch (RFC 7386)."
-    )
-    @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Заняття успішно оновлене",
-                    content = @Content(schema = @Schema(implementation = Lesson.class))
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Заняття не знайдено"
-            )
-    })
-    @PatchMapping("/{id}")
-    public ResponseEntity<Lesson> patchLesson(
-            @PathVariable Long id,
-            @RequestBody Map<String, Object> updates
-    ) {
-        Optional<Lesson> updatedOpt = journalService.patchLesson(id, updates);
-        return updatedOpt
-                .map(ResponseEntity::ok)
+        service.updateLesson(id, req.getSubject(), req.getTopic());
+        return service.getLessonById(id)
+                .map(l -> ResponseEntity.ok(toDto(l)))
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }
 
-    // ---------- DELETE ----------
-
-    @Operation(
-            summary = "Видалити заняття",
-            description = "Видаляє заняття за його ідентифікатором. "
-                    + "Якщо операція успішна — повертається код 204 (No Content)."
-    )
+    // ===== PATCH =====
+    @Operation(summary = "Часткове оновлення заняття (PATCH)")
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "204",
-                    description = "Заняття успішно видалене"
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Заняття не знайдено"
-            )
+            @ApiResponse(responseCode = "200", description = "Оновлено",
+                    content = @Content(schema = @Schema(implementation = LessonDto.class))),
+            @ApiResponse(responseCode = "404", description = "Не знайдено",
+                    content = @Content(schema = @Schema(hidden = true)))
+    })
+    @PatchMapping("/{id}")
+    public ResponseEntity<LessonDto> patch(@PathVariable Long id, @RequestBody Map<String, Object> updates) {
+        return service.patchLesson(id, updates)
+                .map(l -> ResponseEntity.ok(toDto(l)))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+    }
+
+    // ===== DELETE =====
+    @Operation(summary = "Видалити заняття")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Видалено",
+                    content = @Content(schema = @Schema(hidden = true))),
+            @ApiResponse(responseCode = "404", description = "Не знайдено",
+                    content = @Content(schema = @Schema(hidden = true)))
     })
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteLesson(@PathVariable Long id) {
-        Optional<Lesson> lessonOpt = journalService.getLessonById(id);
-        if (lessonOpt.isEmpty()) {
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        if (service.getLessonById(id).isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
-        journalService.deleteLesson(id);
+        service.deleteLesson(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // ===== JPA-запити, які Є в сервісі =====
+
+    // JPQL @Query із фільтрами
+    @Operation(summary = "Пошук занять (JPQL @Query + фільтри)")
+    @ApiResponse(responseCode = "200", description = "OK",
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = LessonDto.class))))
+    @GetMapping("/search")
+    public ResponseEntity<List<LessonDto>> searchByQuery(
+            @RequestParam(required = false) String subject,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        List<Lesson> list = service.searchLessonsByQuery(subject, from, to);
+        return ResponseEntity.ok(list.stream().map(this::toDto).toList());
+    }
+
+    // NamedQuery по темі (pattern)
+    @Operation(summary = "Пошук занять за темою (NamedQuery)")
+    @ApiResponse(responseCode = "200", description = "OK",
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = LessonDto.class))))
+    @GetMapping("/search/by-topic")
+    public ResponseEntity<List<LessonDto>> searchByTopicNamed(@RequestParam String pattern) {
+        List<Lesson> list = service.searchLessonsByTopicNamed(pattern);
+        return ResponseEntity.ok(list.stream().map(this::toDto).toList());
+    }
+
+    // ===== MAPPERS =====
+    private LessonDto toDto(Lesson l) {
+        LessonDto dto = new LessonDto();
+        dto.setId(l.getId());
+        dto.setSubject(l.getSubject());
+        dto.setTopic(l.getTopic());
+        dto.setDate(l.getDate());
+        int count = (l.getMarks() != null) ? l.getMarks().size()
+                : service.getMarksForLesson(l.getId()).size();
+        dto.setMarksCount(count);
+        return dto;
+    }
+
+    private LessonPageDto toDto(LessonPage p) {
+        LessonPageDto dto = new LessonPageDto();
+        dto.setPage(p.page());
+        dto.setSize(p.size());
+        dto.setTotalElements(p.totalElements());
+        dto.setTotalPages(p.totalPages());
+        dto.setContent(p.content().stream().map(this::toDto).toList());
+        return dto;
     }
 }

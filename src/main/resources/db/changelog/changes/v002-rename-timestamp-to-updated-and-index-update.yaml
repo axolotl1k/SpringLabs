@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: v002-1-rename-timestamp-to-updated
+      author: axolotlik
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: mark
+            columnName: timestamp
+      changes:
+        - renameColumn:
+            tableName: mark
+            oldColumnName: timestamp
+            newColumnName: updated_at
+            columnDataType: TIMESTAMP
+      rollback:
+        - renameColumn:
+            tableName: mark
+            oldColumnName: updated_at
+            newColumnName: timestamp
+            columnDataType: TIMESTAMP
+
+  - changeSet:
+      id: v002-2-index-updated
+      author: axolotlik
+      changes:
+        - createIndex:
+            tableName: mark
+            indexName: idx_mark_updated
+            columns:
+              - column: { name: updated_at }
+

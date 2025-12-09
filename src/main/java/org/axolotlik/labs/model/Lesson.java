@@ -1,77 +1,44 @@
 package org.axolotlik.labs.model;
 
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.axolotlik.labs.util.IdGenerator;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;
+import lombok.*;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
-@Data
-@NoArgsConstructor
+@Entity
+@Table(name = "lesson")
+@NamedQueries({
+        // 5.1.2) @NamedQuery
+        @NamedQuery(
+                name = "Lesson.findByTopicPattern",
+                query = """
+                select l from Lesson l
+                where lower(l.topic) like lower(concat('%', :pattern, '%'))
+                order by l.date desc, l.id desc
+                """
+        )
+})
+@Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class Lesson {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false)
     private String subject;
-    private LocalDate date;
+
+    @Column
     private String topic;
+
+    // у БД: lesson_date
+    @Column(name = "lesson_date", nullable = false)
+    private LocalDate date;
+
+    @JsonIgnore // щоб не міняти існуючі JSON-відповіді і уникнути рекурсії
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @OneToMany(mappedBy = "lesson", fetch = FetchType.LAZY)
     private List<Mark> marks = new ArrayList<>();
-
-    // 'Lesson' володіє власним генератором ID для своїх 'Marks'
-    private IdGenerator markIdGenerator;
-
-    public Lesson(Long id, String subject, String topic, IdGenerator markIdGenerator) {
-        this.id = id;
-        this.subject = subject;
-        this.topic = topic;
-        this.date = LocalDate.now();
-        this.markIdGenerator = markIdGenerator;
-    }
-
-    // --- Методи для керування 'Marks' ---
-    // Це дозволяє тримати логіку інкапсульованою тут,
-    // а не в сервісі.
-
-    public void addMark(Mark mark) {
-        mark.setId(this.markIdGenerator.getNextId());
-
-        if (!mark.isPresent()) {
-            mark.setGrade(null);
-        }
-        mark.setTimestamp(LocalDateTime.now());
-        this.marks.add(mark);
-    }
-
-    public Optional<Mark> findMarkById(Long markId) {
-        return this.marks.stream()
-                .filter(m -> m.getId().equals(markId))
-                .findFirst();
-    }
-
-    public void deleteMarkById(Long markId) {
-        this.marks.removeIf(m -> m.getId().equals(markId));
-    }
-
-    public void updateMark(Mark updatedMark) {
-        if (updatedMark.getId() == null) {
-            return;
-        }
-
-        Optional<Mark> originalMarkOpt = findMarkById(updatedMark.getId());
-
-        if (originalMarkOpt.isPresent()) {
-            Mark originalMark = originalMarkOpt.get();
-
-            if (!updatedMark.isPresent()) {
-                updatedMark.setGrade(null);
-            }
-
-            originalMark.setStudentName(updatedMark.getStudentName());
-            originalMark.setPresent(updatedMark.isPresent());
-            originalMark.setGrade(updatedMark.getGrade());
-            originalMark.setTimestamp(updatedMark.getTimestamp());
-        }
-    }
 }

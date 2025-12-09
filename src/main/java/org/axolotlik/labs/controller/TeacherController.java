@@ -6,31 +6,40 @@ import org.axolotlik.labs.service.JournalService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
 
 @Controller
 @RequestMapping("/teacher")
 public class TeacherController {
 
-    // Демонстрація ін'єкції напряму у поле (НЕ РЕКОМЕНДОВАНО).
-    // Використовується тут лише для виконання вимог лабораторної.
     @Autowired
     private JournalService journalService;
 
-    // --- Керування Відмітками (Marks) ---
+    // забороняємо підв'язку поля id у формі створення Mark (щоб не прилітав UPDATE)
+    @InitBinder("newMark")
+    void disallowId(WebDataBinder b) { b.setDisallowedFields("id"); }
 
-    @GetMapping("/lesson/{id}/add")
-    public String showAddMarkForm(@PathVariable Long id, Model model) {
-        Lesson lesson = journalService.getLessonById(id).orElseThrow();
+    // --- Marks ---
+
+    // форма "додати відмітку"
+    @GetMapping("/lesson/{lessonId}/add")
+    public String showAddMarkForm(@PathVariable Long lessonId, Model model) {
+        Lesson lesson = journalService.getLessonById(lessonId).orElseThrow();
         model.addAttribute("lesson", lesson);
         model.addAttribute("newMark", new Mark());
         return "add-mark-form";
     }
 
-    @PostMapping("/lesson/{id}/add")
-    public String addMark(@PathVariable Long id, @ModelAttribute Mark newMark) {
-        journalService.addMark(id, newMark);
-        return "redirect:/lesson/" + id;
+    // сабміт форми "додати відмітку"
+    @PostMapping("/lesson/{lessonId}/add")
+    public String addMark(@PathVariable Long lessonId, @ModelAttribute("newMark") Mark mark) {
+        mark.setId(null); // гарантуємо INSERT
+        if (mark.getTimestamp() == null) mark.setTimestamp(LocalDateTime.now());
+        journalService.addMark(lessonId, mark);
+        return "redirect:/lesson/" + lessonId;
     }
 
     @PostMapping("/lesson/{lessonId}/mark/{markId}/delete")
@@ -53,8 +62,7 @@ public class TeacherController {
         return "redirect:/lesson/" + lessonId;
     }
 
-
-    // --- Керування Заняттями (Lessons) ---
+    // --- Lessons ---
 
     @GetMapping("/lesson/new")
     public String showCreateLessonForm(Model model) {
