@@ -2,23 +2,20 @@ package org.axolotlik.labs.model;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+
 import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Mark {
-
     private Long id;
+    private Long lessonId;       // FK на lesson
     private String studentName;
-    private Integer grade; // Integer, щоб могти зберігати 'null'
+    private Integer grade;
     private boolean present = true;
     private LocalDateTime timestamp;
-
-    // Конструктор для 'init()' в репозиторії
-    public Mark(String studentName, Integer grade, boolean present) {
-        this.studentName = studentName;
-        this.grade = present ? grade : null;
-        this.present = present;
-        this.timestamp = LocalDateTime.now();
-    }
 }

@@ -10,27 +10,20 @@ import java.util.Map;
 import java.util.Optional;
 
 public interface JournalService {
-
-    // --- Уроки (Lesson) ---
+    // Lessons
     List<Lesson> getAllLessons();
     Optional<Lesson> getLessonById(Long id);
     Lesson createLesson(String subject, String topic);
     void updateLesson(Long lessonId, String newSubject, String newTopic);
     void deleteLesson(Long lessonId);
+    LessonPage findLessons(String subject, LocalDate dateFrom, LocalDate dateTo, int page, int size);
+    Optional<Lesson> patchLesson(Long id, Map<String, Object> updates);
 
-    // --- Оцінки (Mark) ---
-    void addMark(Long lessonId, Mark mark);
+    // Marks
+    List<Mark> getMarksForLesson(Long lessonId);
     Mark findMarkById(Long lessonId, Long markId);
+    void addMark(Long lessonId, Mark mark);
     void updateMark(Long lessonId, Long markId, Mark updatedMark);
     void deleteMark(Long lessonId, Long markId);
-
-    // --- фільтрація + пагінація ---
-    LessonPage findLessons(String subject,
-                           LocalDate dateFrom,
-                           LocalDate dateTo,
-                           int page,
-                           int size);
-
-    // --- часткове оновлення (PATCH) ---
-    Optional<Lesson> patchLesson(Long id, Map<String, Object> updates);
+    List<Mark> latestMarks(int limit);
 }

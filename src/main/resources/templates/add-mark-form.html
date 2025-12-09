@@ -27,7 +27,7 @@
 
     <h1 class="small" th:text="'Тема: ' + (${lesson.topic} ?: 'Без теми')"></h1>
 
-    <form th:action="@{/teacher/lesson/{id}/add(id=${lesson.id})}"
+    <form th:action="@{/teacher/lesson/{lessonId}/add(lessonId=${lesson.id})}"
           th:object="${newMark}" method="post">
 
       <label for="studentName">Студент</label>

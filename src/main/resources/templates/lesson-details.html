@@ -30,7 +30,8 @@
         <p class="meta">Дата:<span th:text="${#temporals.format(lesson.date, 'dd.MM.yyyy')}">16.11.2025</span></p>
 
         <div style="margin-bottom: 12px;">
-            <a class="btn btn-primary" th:href="@{/teacher/lesson/{id}/add(id=${lesson.id})}">+ Додати відмітку</a>
+            <a class="btn btn-primary"
+               th:href="@{/teacher/lesson/{lessonId}/add(lessonId=${lesson.id})}">+ Додати відмітку</a>
         </div>
 
         <table>
