@@ -11,6 +11,7 @@ import org.axolotlik.labs.dto.mark.MarkDto;
 import org.axolotlik.labs.dto.mark.UpdateMarkRequest;
 import org.axolotlik.labs.model.Mark;
 import org.axolotlik.labs.service.JournalService;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,26 +29,18 @@ public class MarksRestController {
         this.service = service;
     }
 
-    // ===== LIST =====
-    @Operation(summary = "Список відміток уроку")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Ок",
-                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = MarkDto.class)))),
-            @ApiResponse(responseCode = "404", description = "Урок не знайдено",
-                    content = @Content(schema = @Schema(hidden = true)))
-    })
+    // ===== GET LIST =====
+    @Operation(summary = "Отримати всі відмітки для заняття")
+    @ApiResponse(responseCode = "200", description = "OK",
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = MarkDto.class))))
     @GetMapping
-    public ResponseEntity<List<MarkDto>> list(@PathVariable Long lessonId) {
-        return service.getLessonById(lessonId)
-                .map(l -> {
-                    var dto = service.getMarksForLesson(lessonId).stream().map(this::toDto).toList();
-                    return ResponseEntity.ok(dto);
-                })
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).<List<MarkDto>>build());
+    public ResponseEntity<List<MarkDto>> all(@PathVariable Long lessonId) {
+        var list = service.getMarksForLesson(lessonId).stream().map(this::toDto).toList();
+        return ResponseEntity.ok(list);
     }
 
     // ===== GET ONE =====
-    @Operation(summary = "Отримати відмітку")
+    @Operation(summary = "Отримати відмітку за ID")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Знайдено",
                     content = @Content(schema = @Schema(implementation = MarkDto.class))),
@@ -58,42 +51,44 @@ public class MarksRestController {
     public ResponseEntity<MarkDto> one(@PathVariable Long lessonId, @PathVariable Long markId) {
         Mark m = service.findMarkById(lessonId, markId);
         return (m == null)
-                ? ResponseEntity.status(HttpStatus.NOT_FOUND).<MarkDto>build()
+                ? ResponseEntity.status(HttpStatus.NOT_FOUND).build()
                 : ResponseEntity.ok(toDto(m));
     }
 
     // ===== CREATE =====
-    @Operation(summary = "Створити відмітку", description = "Ігнорує id у тілі запиту.")
+    @Operation(summary = "Додати відмітку до заняття")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Створено",
                     content = @Content(schema = @Schema(implementation = MarkDto.class))),
-            @ApiResponse(responseCode = "404", description = "Урок не знайдено",
+            @ApiResponse(responseCode = "404", description = "Заняття не знайдено",
                     content = @Content(schema = @Schema(hidden = true))),
-            @ApiResponse(responseCode = "400", description = "Невірні дані",
+            @ApiResponse(responseCode = "400", description = "Некоректні дані",
                     content = @Content(schema = @Schema(hidden = true)))
     })
     @PostMapping
-    public ResponseEntity<MarkDto> create(@PathVariable Long lessonId,
-                                          @RequestBody CreateMarkRequest req) {
-        return service.getLessonById(lessonId).map(l -> {
-            if (req.getStudentName() == null || req.getStudentName().isBlank()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).<MarkDto>build();
-            }
-            Mark m = new Mark();
-            m.setId(null);
-            m.setLessonId(lessonId);
-            m.setStudentName(req.getStudentName());
-            m.setGrade(req.getGrade());
-            m.setPresent(req.getPresent() == null || req.getPresent());
-            m.setTimestamp(req.getTimestamp() == null ? LocalDateTime.now() : req.getTimestamp());
+    public ResponseEntity<MarkDto> create(@PathVariable Long lessonId, @RequestBody CreateMarkRequest req) {
+        if (req == null || req.getStudentName() == null || req.getStudentName().isBlank()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        // перевіримо, що lesson існує
+        if (service.getLessonById(lessonId).isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
 
-            service.addMark(lessonId, m);
-            return ResponseEntity.status(HttpStatus.CREATED).body(toDto(m));
-        }).orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).<MarkDto>build());
+        Mark m = new Mark();
+        m.setId(null);
+        m.setLessonId(lessonId);
+        m.setStudentName(req.getStudentName());
+        m.setPresent(req.getPresent() != null ? req.getPresent() : true);
+        m.setGrade(req.getGrade());
+        m.setTimestamp(req.getTimestamp() != null ? req.getTimestamp() : LocalDateTime.now());
+
+        service.addMark(lessonId, m); // сервіс/репо виставляє ID
+        return ResponseEntity.status(HttpStatus.CREATED).body(toDto(m));
     }
 
     // ===== UPDATE (PUT) =====
-    @Operation(summary = "Оновити відмітку", description = "Повне оновлення. Якщо не існує — 404.")
+    @Operation(summary = "Оновити відмітку")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Оновлено",
                     content = @Content(schema = @Schema(implementation = MarkDto.class))),
@@ -105,16 +100,19 @@ public class MarksRestController {
                                           @PathVariable Long markId,
                                           @RequestBody UpdateMarkRequest req) {
         if (service.findMarkById(lessonId, markId) == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).<MarkDto>build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
+
         Mark m = new Mark();
+        m.setLessonId(lessonId);
         m.setStudentName(req.getStudentName());
+        m.setPresent(req.getPresent() != null ? req.getPresent() : true);
         m.setGrade(req.getGrade());
-        if (req.getPresent() != null) m.setPresent(req.getPresent());
+        // timestamp оновлюємо у сервісі
         service.updateMark(lessonId, markId, m);
 
-        Mark fresh = service.findMarkById(lessonId, markId);
-        return ResponseEntity.ok(toDto(fresh));
+        Mark updated = service.findMarkById(lessonId, markId);
+        return ResponseEntity.ok(toDto(updated));
     }
 
     // ===== DELETE =====
@@ -134,15 +132,46 @@ public class MarksRestController {
         return ResponseEntity.noContent().build();
     }
 
-    // ===== mapper =====
+    // ===== Додаткові ендпоїнти для завдання по JPA-запитах =====
+
+    @Operation(summary = "Список присутніх студентів по заняттю (JPQL @Query)")
+    @ApiResponse(responseCode = "200", description = "OK",
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = MarkDto.class))))
+    @GetMapping("/present")
+    public ResponseEntity<List<MarkDto>> present(@PathVariable Long lessonId) {
+        var list = service.findPresentMarks(lessonId).stream().map(this::toDto).toList();
+        return ResponseEntity.ok(list);
+    }
+
+    @Operation(summary = "Відмітки в діапазоні часу (NamedQuery)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "OK",
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = MarkDto.class)))),
+            @ApiResponse(responseCode = "400", description = "Некоректні параметри",
+                    content = @Content(schema = @Schema(hidden = true)))
+    })
+    @GetMapping("/range")
+    public ResponseEntity<List<MarkDto>> range(
+            @PathVariable Long lessonId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to
+    ) {
+        if (from.isAfter(to)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        var list = service.findMarksInRangeNamed(lessonId, from, to).stream().map(this::toDto).toList();
+        return ResponseEntity.ok(list);
+    }
+
+    // ===== MAPPER =====
     private MarkDto toDto(Mark m) {
-        return new MarkDto(
-                m.getId(),
-                m.getLessonId(),
-                m.getStudentName(),
-                m.getGrade(),
-                m.isPresent(),
-                m.getTimestamp()
-        );
+        MarkDto dto = new MarkDto();
+        dto.setId(m.getId());
+        dto.setLessonId(m.getLessonId());
+        dto.setStudentName(m.getStudentName());
+        dto.setGrade(m.getGrade());
+        dto.setPresent(m.isPresent());
+        dto.setTimestamp(m.getTimestamp());
+        return dto;
     }
 }

@@ -6,6 +6,7 @@ import org.axolotlik.labs.model.Mark;
 import org.axolotlik.labs.repo.LessonRepository;
 import org.axolotlik.labs.repo.MarkRepository;
 import org.axolotlik.labs.service.JournalService;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +29,6 @@ public class JournalServiceImpl implements JournalService {
 
     @Override
     public List<Lesson> getAllLessons() {
-        // Якщо головна сторінка темплейтів показує кількість відміток — підкласти marks
         var lessons = lessonRepo.findAll();
         for (var l : lessons) {
             l.setMarks(markRepo.findByLessonId(l.getId()));
@@ -50,9 +50,7 @@ public class JournalServiceImpl implements JournalService {
         l.setSubject(subject);
         l.setTopic(topic);
         l.setDate(LocalDate.now());
-        Long id = lessonRepo.save(l);
-        l.setId(id);
-        return l;
+        return lessonRepo.save(l);
     }
 
     @Override
@@ -131,28 +129,51 @@ public class JournalServiceImpl implements JournalService {
     public void addMark(Long lessonId, Mark mark) {
         if (mark.getTimestamp() == null) mark.setTimestamp(LocalDateTime.now());
         if (mark.isPresent() && mark.getGrade() == null) mark.setGrade(0);
-        markRepo.save(lessonId, mark);
+        mark.setLessonId(lessonId);
+        Mark saved = markRepo.save(mark);
+        mark.setId(saved.getId());
     }
 
     @Override
     @Transactional
     public void updateMark(Long lessonId, Long markId, Mark updatedMark) {
-        // гарантуємо оновлення існуючого запису
         updatedMark.setId(markId);
+        updatedMark.setLessonId(lessonId);
         updatedMark.setTimestamp(LocalDateTime.now());
-        markRepo.save(lessonId, updatedMark);
+        markRepo.save(updatedMark);
     }
 
     @Override
     @Transactional
     public void deleteMark(Long lessonId, Long markId) {
-        // контролер уже перевіряє належність до lessonId
         markRepo.deleteById(markId);
     }
 
     @Override
     public List<Mark> latestMarks(int limit) {
         int safe = Math.max(1, Math.min(limit, 100));
-        return markRepo.findTopNByOrderByTimestampDesc(safe);
+        return markRepo.findAllByOrderByTimestampDesc(PageRequest.of(0, safe)).getContent();
+    }
+
+    // ===== НОВЕ: використання @Query / @NamedQuery / derived =====
+
+    @Override
+    public List<Lesson> searchLessonsByQuery(String subject, LocalDate from, LocalDate to) {
+        return lessonRepo.search(subject, from, to);
+    }
+
+    @Override
+    public List<Lesson> searchLessonsByTopicNamed(String pattern) {
+        return lessonRepo.findByTopicPattern(pattern);
+    }
+
+    @Override
+    public List<Mark> findPresentMarks(Long lessonId) {
+        return markRepo.findPresentByLesson(lessonId);
+    }
+
+    @Override
+    public List<Mark> findMarksInRangeNamed(Long lessonId, LocalDateTime from, LocalDateTime to) {
+        return markRepo.findInRangeForLesson(lessonId, from, to);
     }
 }
